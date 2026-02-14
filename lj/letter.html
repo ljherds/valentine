@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>valentine</title>
+    
+    <!-- Minimal resources -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            background: #0a0a0c;
+            font-family: 'Inter', sans-serif;
+            color: #dac9b8;
+            position: relative;
+        }
+
+        /* VISIBLE FLOATING OBJECTS */
+        .floating-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .float-item {
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0.4;
+            animation: float 25s infinite linear;
+            color: #b88c8c;
+            will-change: transform;
+        }
+
+        .float-item.heart { color: #8e5c63; }
+        .float-item.star { color: #c9ae74; font-size: 1.6rem; }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) translateX(-10vw) rotate(0deg); }
+            100% { transform: translateY(-20vh) translateX(10vw) rotate(360deg); }
+        }
+
+        /* ENVELOPE */
+        .envelope-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, #1a1418, #0a0a0c);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.8s;
+        }
+
+        .envelope-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .envelope-btn {
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .envelope-icon {
+            width: 140px;
+            height: 100px;
+            background: #f5e6d3;
+            position: relative;
+            margin-bottom: 1rem;
+            border: 1px solid #d4b68a;
+        }
+
+        .envelope-flap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            border-bottom: 50px solid #eedbc5;
+            border-left: 70px solid transparent;
+            border-right: 70px solid transparent;
+            transform-origin: top;
+            transition: transform 0.8s;
+            z-index: 2;
+        }
+
+        .envelope-body {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background: #e8d1b8;
+        }
+
+        .envelope-heart {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #c49a6c;
+            font-size: 2rem;
+            z-index: 3;
+        }
+
+        .envelope-btn.open .envelope-flap {
+            transform: rotateX(180deg);
+        }
+
+        .envelope-text {
+            color: #b88c8c;
+            font-size: 0.7rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        /* MAIN PANEL */
+        .main-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            z-index: 10;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.8s;
+        }
+
+        .main-panel.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .panel-content {
+            background: rgba(26, 20, 24, 0.95);
+            backdrop-filter: blur(8px);
+            width: min(800px, 95vw);
+            max-height: 95vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            padding: 1.5rem;
+            border: 1px solid rgba(184, 140, 140, 0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        .panel-left, .panel-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+        }
+
+        .panel-left {
+            border-right: 1px solid rgba(184, 140, 140, 0.2);
+            padding-right: 1rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-family: 'Playfair Display', serif;
+            font-weight: 300;
+            color: #dac9b8;
+            margin-bottom: 0.3 rem;
+        }
+
+        .sub {
+            font-size: 0.6rem;
+            letter-spacing: 4px;
+            color: #b88c8c;
+            text-transform: uppercase;
+        }
+
+        /* MUSIC PLAYER - LEFT SIDE ONLY */
+        .music-player {
+            background: rgba(25, 20, 20, 0.6);
+            padding: 0.8rem 1rem;
+            width: 100%;
+            border-radius: 30px;
+            border: 1px solid rgba(184, 140, 140, 0.2);
+            margin: 0.5rem 0;
+        }
+
+        .track {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .track-icon {
+            width: 32px;
+            height: 32px;
+            background: #4c2c34;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #c9ae74;
+        }
+
+        .track-info {
+            flex: 1;
+        }
+
+        .track-name {
+            font-size: 0.8rem;
+            color: #e6d5b8;
+        }
+
+        .track-artist {
+            font-size: 0.6rem;
+            color: #b88c8c;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .play-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #c9ae74;
+            border: none;
+            color: #1a1418;
+            cursor: pointer;
+            font-size: 0.7rem;
+            flex-shrink: 0;
+        }
+
+        .progress {
+            flex: 1;
+            height: 3px;
+            background: rgba(184, 140, 140, 0.2);
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: #c9ae74;
+            border-radius: 2px;
+        }
+
+        .time {
+            font-size: 0.5rem;
+            color: #8e5c63;
+            min-width: 30px;
+        }
+
+        .volume {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 0.3rem;
+        }
+
+        .volume i {
+            font-size: 0.6rem;
+            color: #b88c8c;
+        }
+
+        .volume-bar {
+            flex: 1;
+            height: 3px;
+            background: rgba(184, 140, 140, 0.2);
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .volume-fill {
+            width: 50%;
+            height: 100%;
+            background: #c9ae74;
+            border-radius: 2px;
+        }
+
+        .lyric {
+            font-size: 0.5rem;
+            color: #8e5c63;
+            font-style: italic;
+            margin-top: 0.3rem;
+            letter-spacing: 1px;
+        }
+
+        /* RIGHT COLUMN - FULLY CENTERED CONTENT */
+        .right-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            gap: 2rem;
+            margin: auto;
+        }
+
+        .invite-right {
+            text-align: center;
+            padding: 1rem 0;
+            border-top: 1px solid rgba(184, 140, 140, 0.2);
+            border-bottom: 1px solid rgba(184, 140, 140, 0.2);
+            width: 100%;
+            max-width: 280px;
+        }
+
+        .invite-right p {
+            font-size: 1rem;
+            color: #dac9b8;
+            margin-bottom: 0.3rem;
+        }
+
+        .date-right {
+            font-size: 0.55rem;
+            letter-spacing: 4px;
+            color: #c9ae74;
+        }
+
+        .response-right {
+            text-align: center;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .question-right {
+            font-size: 0.7rem;
+            letter-spacing: 4px;
+            color: #b88c8c;
+            margin-bottom: 1rem;
+        }
+
+        .btn-group-right {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.6rem 2rem;
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: transparent;
+            border: 1px solid rgba(184, 140, 140, 0.3);
+            color: #b88c8c;
+            cursor: pointer;
+            transition: 0.2s;
+            min-width: 100px;
+        }
+
+        .btn.yes {
+            border-color: #c9ae74;
+            color: #c9ae74;
+        }
+
+        .btn.no {
+            border-color: #8e5c63;
+            color: #8e5c63;
+        }
+
+        .btn.yes:hover { background: rgba(201, 174, 116, 0.1); }
+        .btn.no:hover { background: rgba(142, 92, 99, 0.1); }
+
+        .message {
+            font-size: 0.6rem;
+            color: #e6d5b8;
+            min-height: 20px;
+            opacity: 0;
+            transition: 0.3s;
+            text-align: center;
+        }
+
+        .message.show { opacity: 1; }
+
+        .accent {
+            font-size: 0.55rem;
+            letter-spacing: 4px;
+            color: #8e5c63;
+            opacity: 0.6;
+            text-align: center;
+        }
+
+        /* ROADMAP POPUP */
+        .roadmap-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 12, 0.98);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.4s;
+            padding: 1rem;
+        }
+
+        .roadmap-popup.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .roadmap-card {
+            background: rgba(26, 20, 24, 0.98);
+            width: min(700px, 95vw);
+            max-height: 90vh;
+            padding: 1.2rem;
+            border: 1px solid rgba(184, 140, 140, 0.2);
+        }
+
+        .roadmap-header {
+            text-align: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .roadmap-header h2 {
+            font-size: 1.4rem;
+            font-family: 'Playfair Display', serif;
+            font-weight: 300;
+            color: #dac9b8;
+        }
+
+        .roadmap-header p {
+            font-size: 0.55rem;
+            letter-spacing: 4px;
+            color: #b88c8c;
+        }
+
+        #mini-map {
+            height: 150px;
+            width: 100%;
+            margin-bottom: 0.8rem;
+            border: 1px solid rgba(184, 140, 140, 0.2);
+        }
+
+        .stops {
+            display: flex;
+            gap: 0.3rem;
+            margin-bottom: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .stop {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.6rem 0.3rem;
+            background: rgba(58, 42, 46, 0.3);
+            border: 1px solid rgba(184, 140, 140, 0.15);
+            text-align: center;
+        }
+
+        .stop i { color: #c9ae74; margin-bottom: 0.2rem; }
+        .stop .name { font-size: 0.7rem; color: #e6d5b8; }
+        .stop .addr { font-size: 0.45rem; color: #b88c8c; line-height: 1.2; }
+        .stop .time { font-size: 0.45rem; color: #8e5c63; margin-top: 0.2rem; }
+
+        .proceed {
+            text-align: center;
+            padding-top: 0.8rem;
+            border-top: 1px solid rgba(184, 140, 140, 0.15);
+        }
+
+        .proceed-btn {
+            background: transparent;
+            border: 2px solid #c9ae74;
+            padding: 0.6rem 3rem;
+            color: #c9ae74;
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .proceed-btn:hover {
+            background: rgba(201, 174, 116, 0.1);
+        }
+
+        .close {
+            position: absolute;
+            top: 0.8rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #b88c8c;
+            font-size: 1rem;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        /* LOVE LETTER POPUP */
+        .letter-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 12, 0.98);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.4s;
+        }
+
+        .letter-popup.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .letter-card {
+            background: rgba(26, 20, 24, 0.98);
+            padding: 2rem;
+            max-width: 300px;
+            text-align: center;
+            border: 1px solid rgba(184, 140, 140, 0.2);
+        }
+
+        .letter-card h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 300;
+            margin-bottom: 0.2rem;
+        }
+
+        .letter-card p {
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin: 1rem 0;
+            color: #e6d5b8;
+            font-style: italic;
+        }
+
+        .letter-card .signature {
+            color: #c9ae74;
+            font-size: 1rem;
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* MUSIC TOGGLE */
+        .music-corner {
+            position: fixed;
+            bottom: 0.8rem;
+            right: 0.8rem;
+            width: 36px;
+            height: 36px;
+            background: rgba(26, 20, 24, 0.8);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(184, 140, 140, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #b88c8c;
+            cursor: pointer;
+            z-index: 50;
+            font-size: 0.9rem;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 400;
+        }
+
+        .particle {
+            position: absolute;
+            color: #b88c8c;
+            font-size: 1rem;
+            opacity: 0.4;
+            animation: rise 3s ease-out forwards;
+        }
+
+        @keyframes rise {
+            to { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+
+        audio { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- VISIBLE FLOATING OBJECTS -->
+    <div class="floating-bg" id="floatingBg"></div>
+
+    <!-- ENVELOPE -->
+    <div class="envelope-screen" id="envelopeScreen">
+        <div class="envelope-btn" id="envelopeBtn">
+            <div class="envelope-icon">
+                <div class="envelope-flap"></div>
+                <div class="envelope-body"></div>
+                <div class="envelope-heart">🖤</div>
+            </div>
+            <div class="envelope-text">OPEN</div>
+        </div>
+    </div>
+
+    <!-- MAIN PANEL - MUSIC LEFT, INVITE + BUTTONS RIGHT (CENTERED) -->
+    <div class="main-panel" id="mainPanel">
+        <div class="panel-content">
+            <!-- LEFT COLUMN - MUSIC ONLY -->
+            <div class="panel-left">
+                <div>
+                    <h1>For <span id="name">you</span></h1>
+                    <div class="sub">valentine</div>
+                </div>
+
+                <!-- MUSIC PLAYER ONLY ON LEFT -->
+                <div class="music-player">
+                    <div class="track">
+                        <div class="track-icon"><i class="fas fa-moon"></i></div>
+                        <div class="track-info">
+                            <div class="track-name">Panaginip</div>
+                            <div class="track-artist">Nicole</div>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="play-btn" id="playBtn"><i class="fas fa-play" id="playIcon"></i></button>
+                        <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+                        <span class="time" id="currentTime">0:00</span>
+                    </div>
+                    <div class="volume">
+                        <i class="fas fa-volume-up" id="volumeIcon"></i>
+                        <div class="volume-bar"><div class="volume-fill" id="volumeFill"></div></div>
+                    </div>
+                    <div class="lyric">"ikaw ang panaginip"</div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN - FULLY CENTERED CONTENT -->
+            <div class="panel-right">
+                <div class="right-content">
+                    <!-- INVITATION -->
+                    <div class="invite-right">
+                        <p>Dinner after gym?</p>
+                        <div class="date-right">feb 14 · 10pm</div>
+                    </div>
+                    
+                    <!-- YES/NO BUTTONS -->
+                    <div class="response-right">
+                        <div class="question-right">join me?</div>
+                        <div class="btn-group-right">
+                            <button class="btn yes" id="yesBtn">yes</button>
+                            <button class="btn no" id="noBtn">no</button>
+                        </div>
+                        <div class="message" id="yesMessage"></div>
+                    </div>
+                    
+                    <div class="accent">🖤</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROADMAP POPUP -->
+    <div class="roadmap-popup" id="roadmapPopup">
+        <div class="roadmap-card">
+            <button class="close" id="closeRoadmap">✕</button>
+            <div class="roadmap-header">
+                <h2>our plan route</h2>
+                <p>feb 14 · 10pm</p>
+            </div>
+            <div id="mini-map"></div>
+            <div class="stops">
+                <div class="stop"><i class="fas fa-dumbbell"></i><div class="name">MMA Gym</div><div class="addr">Ipil-Ipil, Digos</div><div class="time">6-9pm</div></div>
+                <div class="stop"><i class="fas fa-moon"></i><div class="name">Nitebite</div><div class="addr">Lapu-Lapu Hwy</div><div class="time"></div></div>
+                <div class="stop"><i class="fas fa-coffee"></i><div class="name">Cup & Beyond</div><div class="addr">Lapu-Lapu Ext</div><div class="time">10pm → ∞</div></div>
+            </div>
+            <div class="proceed">
+                <button class="proceed-btn" id="proceedBtn">PROCEED</button>
+                <div class="message" id="proceedMessage" style="margin-top:0.5rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOVE LETTER -->
+    <div class="letter-popup" id="letterPopup">
+        <div class="letter-card">
+            <button class="close" id="closeLetter">✕</button>
+            <h3>for you</h3>
+            <p id="letterBody">my dearest,<br><br>see you at the gym ❤️</p>
+            <div class="signature" id="letterSignature">yours</div>
+        </div>
+    </div>
+
+    <!-- MUSIC TOGGLE -->
+    <div class="music-corner" id="musicToggle"><i class="fas fa-music"></i></div>
+
+    <!-- PARTICLES -->
+    <div class="particles" id="particles"></div>
+
+    <!-- SINGLE AUDIO - bgMusic ONLY -->
+    <audio id="bgMusic" loop preload="auto">
+        <source src="Nicole - Panaginip (Lyrics) Parang panaginip (Tiktok).mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        (function(){
+            const name = new URLSearchParams(location.search).get('name') || 'you';
+            document.getElementById('name').textContent = name;
+
+            // VISIBLE FLOATING OBJECTS
+            const bg = document.getElementById('floatingBg');
+            for(let i=0; i<25; i++){
+                const el = document.createElement('div');
+                el.className = 'float-item ' + (i%3===0 ? 'heart' : 'star');
+                el.textContent = i%2===0 ? '🖤' : '✧';
+                el.style.left = Math.random()*100+'%';
+                el.style.animationDelay = Math.random()*15+'s';
+                el.style.animationDuration = (Math.random()*15+20)+'s';
+                el.style.opacity = 0.4 + Math.random()*0.3;
+                bg.appendChild(el);
+            }
+
+            // ENVELOPE
+            const envelopeScreen = document.getElementById('envelopeScreen');
+            const envelopeBtn = document.getElementById('envelopeBtn');
+            const mainPanel = document.getElementById('mainPanel');
+            
+            envelopeBtn.addEventListener('click', ()=>{
+                envelopeBtn.classList.add('open');
+                setTimeout(()=>{
+                    envelopeScreen.classList.add('hidden');
+                    mainPanel.classList.add('visible');
+                    setTimeout(()=> { 
+                        if(bgMusic.paused) {
+                            bgMusic.play().catch(e => console.log('Auto-play prevented:', e));
+                        }
+                    }, 500);
+                },600);
+            });
+
+            // MUSIC PLAYER - SINGLE AUDIO
+            const playBtn = document.getElementById('playBtn');
+            const playIcon = document.getElementById('playIcon');
+            const progressFill = document.getElementById('progressFill');
+            const currentTime = document.getElementById('currentTime');
+            const volumeFill = document.getElementById('volumeFill');
+            const volumeIcon = document.getElementById('volumeIcon');
+            const bgMusic = document.getElementById('bgMusic');
+            
+            let isPlaying = false;
+            let volume = 0.5;
+            
+            bgMusic.volume = volume;
+            volumeFill.style.width = '50%';
+            
+            bgMusic.addEventListener('timeupdate', ()=>{
+                if(bgMusic.duration){
+                    const p = (bgMusic.currentTime / bgMusic.duration)*100;
+                    progressFill.style.width = p+'%';
+                    const min = Math.floor(bgMusic.currentTime/60);
+                    const sec = Math.floor(bgMusic.currentTime%60).toString().padStart(2,'0');
+                    currentTime.textContent = min+':'+sec;
+                }
+            });
+
+            bgMusic.addEventListener('ended', ()=>{
+                isPlaying = false;
+                playIcon.className = 'fas fa-play';
+                progressFill.style.width = '0%';
+                currentTime.textContent = '0:00';
+            });
+            
+            function togglePlay(){
+                if(!isPlaying){
+                    bgMusic.play().then(()=>{
+                        playIcon.className = 'fas fa-pause';
+                        isPlaying = true;
+                    }).catch(e => {
+                        console.log('Playback failed:', e);
+                    });
+                } else {
+                    bgMusic.pause();
+                    playIcon.className = 'fas fa-play';
+                    isPlaying = false;
+                }
+            }
+            
+            playBtn.addEventListener('click', togglePlay);
+
+            // Volume control
+            document.querySelector('.volume-bar').addEventListener('click', (e)=>{
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pos = (e.clientX - rect.left)/rect.width;
+                volume = Math.max(0, Math.min(1, pos));
+                bgMusic.volume = volume;
+                volumeFill.style.width = (volume*100)+'%';
+                
+                if(volume === 0){
+                    volumeIcon.className = 'fas fa-volume-mute';
+                } else if(volume < 0.5){
+                    volumeIcon.className = 'fas fa-volume-down';
+                } else {
+                    volumeIcon.className = 'fas fa-volume-up';
+                }
+            });
+
+            document.getElementById('musicToggle').addEventListener('click', togglePlay);
+
+            document.body.addEventListener('touchstart', function enableAudio() {
+                if(bgMusic.paused && !isPlaying) {
+                    bgMusic.play().catch(()=>{});
+                }
+                document.body.removeEventListener('touchstart', enableAudio);
+            }, { once: true });
+
+            // YES/NO LOGIC
+            const yesBtn = document.getElementById('yesBtn');
+            const noBtn = document.getElementById('noBtn');
+            const yesMessage = document.getElementById('yesMessage');
+            const roadmapPopup = document.getElementById('roadmapPopup');
+            let yesClicked = false;
+
+            yesBtn.addEventListener('click', ()=>{
+                if(yesClicked) return;
+                yesClicked = true;
+                yesMessage.textContent = `Thank you, Ms. Independent`;
+                yesMessage.classList.add('show');
+                
+                noBtn.textContent = 'yes';
+                noBtn.className = 'btn yes';
+                
+                createConfetti(30);
+                
+                setTimeout(()=>{
+                    roadmapPopup.classList.add('visible');
+                    initMap();
+                },600);
+                
+                setTimeout(()=> yesMessage.classList.remove('show'), 2000);
+            });
+
+            function noHandler(){
+                if(yesClicked) return;
+                noBtn.textContent = 'okay yes';
+                noBtn.className = 'btn yes';
+                setTimeout(()=> noBtn.textContent = 'yes', 1000);
+                noBtn.removeEventListener('click', noHandler);
+                noBtn.addEventListener('click', ()=> yesBtn.click());
+                createConfetti(5);
+            }
+            noBtn.addEventListener('click', noHandler);
+
+            // MAP
+            let map, mapInit = false;
+            function initMap(){
+                if(mapInit) return;
+                map = L.map('mini-map').setView([6.7167, 125.3550], 13);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: 'Map data'
+                }).addTo(map);
+                
+                const gym = [6.7167, 125.3500];
+                const nite = [6.7200, 125.3550];
+                const cafe = [6.7230, 125.3600];
+                
+                L.marker(gym).addTo(map).bindPopup('MMA Gym');
+                L.marker(nite).addTo(map).bindPopup('Nitebite');
+                L.marker(cafe).addTo(map).bindPopup('Cup & Beyond');
+                
+                L.polyline([gym, nite, cafe], {color:'#c9ae74', weight:2, dashArray:'5,5'}).addTo(map);
+                mapInit = true;
+                setTimeout(()=> map.invalidateSize(), 200);
+            }
+
+            // PROCEED
+            const proceedBtn = document.getElementById('proceedBtn');
+            const proceedMessage = document.getElementById('proceedMessage');
+            const letterPopup = document.getElementById('letterPopup');
+            const letterBody = document.getElementById('letterBody');
+            const letterSignature = document.getElementById('letterSignature');
+
+            proceedBtn.addEventListener('click', ()=>{
+                proceedMessage.textContent = `see you, ms. independent ❤️`;
+                proceedMessage.classList.add('show');
+                createConfetti(30);
+                
+                setTimeout(()=>{
+                    letterBody.innerHTML = `Ms. independent,<br><br>I’m so looking forward to getting lost in conversation with you tonight.`;
+                    letterSignature.textContent = '-sapyot';
+                    letterPopup.classList.add('visible');
+                },800);
+                
+                setTimeout(()=> proceedMessage.classList.remove('show'), 2000);
+            });
+
+            // CLOSE BUTTONS
+            document.getElementById('closeRoadmap').addEventListener('click', ()=>{
+                roadmapPopup.classList.remove('visible');
+            });
+            
+            document.getElementById('closeLetter').addEventListener('click', ()=>{
+                letterPopup.classList.remove('visible');
+            });
+
+            // CONFETTI
+            function createConfetti(count){
+                const container = document.getElementById('particles');
+                for(let i=0; i<count; i++){
+                    const p = document.createElement('span');
+                    p.className = 'particle';
+                    p.textContent = ['🖤','❤️','🤍','✧'][Math.floor(Math.random()*4)];
+                    p.style.left = Math.random()*100+'%';
+                    p.style.top = '50%';
+                    p.style.fontSize = (Math.random()*12+12)+'px';
+                    p.style.animationDuration = (Math.random()*2+2)+'s';
+                    container.appendChild(p);
+                    setTimeout(()=> p.remove(), 3000);
+                }
+            }
+
+            // PREVENT SCROLLING
+            document.body.addEventListener('touchmove', (e)=> e.preventDefault(), {passive:false});
+            document.body.addEventListener('wheel', (e)=> e.preventDefault(), {passive:false});
+        })();
+    </script>
+</body>
+</html>
